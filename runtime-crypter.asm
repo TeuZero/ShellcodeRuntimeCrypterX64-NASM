@@ -2,13 +2,30 @@
 
 global WinMain
 
-section .code
+section .text
 WinMain:
-    Main:
+    Start:
+        ;***************
+        ;**** START ****
+        ;***************
+        ;* By: Teuzero *
+        ;***************
+
         add rsp, 0xfffffffffffffdf8; # Avoid Null Byte
         ; Obtem o endereço base do kernel32.dll 
         call Locate_kernel32
+        call IAT
+        call FinFunctionGetProcAddress
+        call LoadLibraryA
+        call LoadMsvcrt
+        call PrintMsgConsole
+        call PegaNomeDoaquivo
+        call OpenFile
+        mov rbp,rdi
+        ret
 
+
+        IAT:
         ; Código para chegar na tabela de endereco de exportacao
         mov ebx, [rbx+0x3C];  # obtem o endereco da assinatura do  PE do Kernel32 e coloca em  EBX
         add rbx, r8;          # Add defrerenced signature offset to kernel32 base. Store in RBX.
@@ -20,8 +37,10 @@ WinMain:
         xor r11, r11;         # Zera R11 para ser usado 
         mov r11d, [rdx+0x20]; # AddressOfNames RVA
         add r11, r8;          # AddressOfNames VMA
+        ret
 
         ; Percorra a tabela de endereços de exportação para encontrar o nome GetProcAddress
+        FinFunctionGetProcAddress:
         mov rcx, r10;                        # Set loop counter
         kernel32findfunction:  
                 jecxz FunctionNameFound;     # Percorra esta função até encontrarmos GetProcA
@@ -49,7 +68,9 @@ WinMain:
                 mov eax, [r11+4+r13*4]; # Get the function RVA.
                 add rax, r8;            # Add base address to function RVA
                 mov r14, rax;           # GetProcAddress to R14
-        
+        ret
+
+        LoadLibraryA:
                ; pega o endereco LoadLibraryA usando GetProcAddress
                 mov rcx, 0x41797261;  
                 push rcx;  
@@ -62,9 +83,8 @@ WinMain:
                 add rsp, 0x30;                     # Remove espaço locdo na pilha
                 add rsp, 0x10;                     # Remove a string alocada de  LoadLibrary 
                 mov rsi, rax;                      # Guarda o endereço de loadlibrary em RSI
+        ret
 
-            
-            
         LoadMsvcrt:
                 ; Load msvcrt.dll
                 mov rax, "ll"
@@ -77,7 +97,8 @@ WinMain:
                 mov r15,rax
                 add rsp, 0x30
                 add rsp, 0x10
-                
+        ret
+
         PrintMsgConsole:
                 ; Lookup printf
                 mov rax, "printf"
@@ -98,6 +119,8 @@ WinMain:
                 sub rsp, 0x30
                 call r12
                 add rsp, 0x30
+                add rsp, 0x18
+        ret
 
         PegaNomeDoaquivo:
                 ; Lookup scanf
@@ -118,8 +141,11 @@ WinMain:
                 lea rcx, [rsp]
                 sub rsp, 0x30
                 call r12
+                add rsp, 0x30
+                add rsp, 0x10
+        ret
 
-        OpenFile1:
+        OpenFile:
                 ;Lookup fopen
                 mov rax, "fopen"
                 push rax
@@ -131,7 +157,7 @@ WinMain:
                 add rsp, 0x30
         
                 ;Abre arquivo
-                mov rcx, [rsp+0x10]
+                lea rcx, [rsp+0x20]
                 mov rax, "rb"
                 push rax
                 lea rdx, [rsp]
@@ -139,7 +165,9 @@ WinMain:
                 call r12
                 add rsp, 0x30
                 mov rbx,rax
+                add rsp, 0x10
         
+
         LocomoveParaOFimDoarquivo:
                 ;Lookup fseek
                 mov rax, "fseek"
@@ -155,8 +183,10 @@ WinMain:
                 mov rcx, rbx
                 mov r8d, dword 0x02        
                 mov edx, dword 0x00
+                sub rsp, 0x30
                 call r12
-
+                add rsp, 0x30
+                add rsp, 0x08
         
         GetSizeFile:
                 ;Lookup ftell
@@ -171,9 +201,12 @@ WinMain:
         
                 ;call ftell
                 mov rcx, rbx
+                sub rsp, 0x30
                 call r12
+                add rsp,0x30
                 mov rsi,rax
-        
+                add rsp, 0x08
+
         AlocaEspacoEmUmEndereco:
                 ;Lookup malloc
                 mov rax, "malloc"
@@ -187,8 +220,11 @@ WinMain:
 
                 ;call malloc
                 mov rcx, rsi
+                sub rsp, 0x30
                 call r12
                 mov rdi, rax
+                add rsp,0x30
+                add rsp, 0x08
 
         MoveParaInicioDoArquivo:
                 ;Lookup rewind
@@ -203,7 +239,10 @@ WinMain:
         
                 ;call rewind
                 mov rcx, rbx
+                sub rsp, 0x30
                 call r12
+                add rsp, 0x30
+                add rsp, 0x08
 
         GravaOPEdoArquivoNoEnderecoAlocadoPorMalloc:
                 ;Lookup fread
@@ -224,6 +263,7 @@ WinMain:
                 sub rsp, 0x30
                 call r12
                 add rsp, 0x30
+                add rsp, 0x08
 
         FechaArquivo:
                 ;Lookup fclose
@@ -237,14 +277,14 @@ WinMain:
                 add rsp, 0x30
 
                 ;call fclose
+                sub rsp,0x30
                 mov rcx, rbx
                 call r12
-
-        Encryption:
-
+                add rsp, 0x30
+                add rsp, 0x08
+        ret
+        
             
-                ret
-
         ;locate_kernel32
         Locate_kernel32: 
                 xor rcx, rcx;             # Zera RCX
