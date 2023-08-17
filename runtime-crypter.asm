@@ -22,6 +22,12 @@ WinMain:
         call PegaNomeDoaquivo
         call OpenFile
         mov rbp,rdi
+        ;Nome do proprio programa
+        mov rax, "T0.exe"
+        add rsp, 0x20
+        mov [rsp+0x10], rax
+        call OpenFile
+
         ret
 
 
