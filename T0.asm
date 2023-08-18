@@ -7,6 +7,8 @@ section .data
         TamArqTarget times 8 dq 0
         bufferFileName times 32 db 0
         Buffer times 50000 db 0
+        addressAlocado times 8 dq 0
+        addressAlocadoEx times 8 dq 0
 section .text
 
 WinMain:
@@ -533,6 +535,8 @@ WinMain:
                 add rsp, 0x30
                 mov rbx,rax
                 add rsp, 0x10
+                mov [addressAlocado], rax
+
 
                 xor rcx,rcx
                 xor rdx,rdx
@@ -744,6 +748,7 @@ WinMain:
                                 mov rbp, r13
                                 call r12
                                 mov r11,rax
+                                mov [addressAlocadoEx], rax
                                 
                                 ;Calcula Delta
                                 mov r12,rdi
@@ -757,6 +762,7 @@ WinMain:
                                 add r14, rdi
                                 mov r10d, [r14+0xB0]
                                 xor r15d,r15d
+                                mov rsi, [addressAlocado]
                                 add r10, rsi
                              
 
