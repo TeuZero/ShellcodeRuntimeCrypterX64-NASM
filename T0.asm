@@ -6,7 +6,7 @@ section .data
         TamArqProgram times 8 dq 0
         TamArqTarget times 8 dq 0
         bufferFileName times 32 db 0
-
+        Buffer times 50000 db 0
 section .text
 
 WinMain:
@@ -26,7 +26,6 @@ WinMain:
         call LoadMsvcrt
         call PrintMsgConsole
         call PegaNomeDoaquivo
-
         call OpenFile
         mov rbp,rdi
         mov r10, rbp ; Arquivo alvo
@@ -38,11 +37,34 @@ WinMain:
         mov rax, [TamArqProgram]
         mov [TamArqTarget], rax
         call OpenFile
-        call Rsrc
+        call Data
         call codeModification
+        call Encrypt
         call CriaArquivoEncriptado 
+        call Decrypt
         
         
+        Encrypt:
+                xor rcx,rcx
+                xor rax,rax
+                mov rdx, rbp
+                mov rsi, rdi
+                add rsi, r8
+                add rsi, 0xC00
+                mov r13,rsi
+                EncryptLoop:
+                        mov rax,[rdx]
+                        not al
+                        add al, 0x06
+                        add al, 0x95
+                        mov [rsi], byte al
+                        add rsi, 0x01
+                        add rdx, 0x01
+                        inc rcx
+                        cmp rcx, [TamArqTarget]
+                        jne EncryptLoop  
+        ret
+
         CriaArquivoEncriptado:
                 ;Lookup fopen
                 mov rax, "fopen"
@@ -80,8 +102,8 @@ WinMain:
                 add rsp, 0x30
 
                 ;call fwrite
-                mov edx,[TamArqTarget]
-                add edx, 0x600
+                mov ecx, [TamArqProgram]
+                mov edx, ecx
                 mov r9, rbx
                 mov r8d, 0x01
                 mov rcx, rdi
@@ -105,7 +127,7 @@ WinMain:
                 mov rcx, rbx
                 call r12
                 add rsp, 0x30
-                add rsp, 0x08
+                add rsp, 0x18
         ret
 
         codeModification:
@@ -117,26 +139,22 @@ WinMain:
                 shr rdx, 0x20
                 add rsi, rdx ; PE
                 add rsi, 0x50
-                ;xor rbx,rbx
-                ;mov rbx,[rsi]
-                ;add rbx, 0x8BBD
+                xor rbx,rbx
+                mov rbx,[rsi]
+                ;add rbx, 0x0000
                 ;mov [rsi], ebx ;Altera SizeOfImage
 
                 ;Altera numero das secoes
                 mov rsi, rdi
                 add rsi, rdx
                 add rsi, 0x06
-                mov [rsi], word 0x03
-
-                ; Pega tamnho do codigo .text
-                mov rsi, rdi
-                add rsi, rdx
-                add rsi, 0x1c
-                mov rcx, [rsi]
+                mov [rsi], word 0x02
         ret
 
 
-        Rsrc:
+        Data:
+               
+
                 mov rsi, rdi ;Aqruivo T0.exe
                 add rsi, 0x3c
                 mov rdx, [rsi]
@@ -144,15 +162,19 @@ WinMain:
                 shl rdx, 0x20
                 shr rdx, 0x20
                 add rsi, rdx ; PE
-                add rsi, 0x158
+                add rsi, 0x130
+
+                ;add rsi, 0x28
+                ;mov rax, ".\B5"
+                ;mov [rsi], rax
                 add rsi, 0x08
                 ;mov [rsi], dword 0x0004BBD
 
                 ;Virtual Address
                 sub rsi, 0x24
-                ;xor rax,rax
-                ;mov rax, [rsi]
-                ;add eax, 0x1000
+                xor rax,rax
+                mov rax, [rsi]
+                add eax, 0x1000
                 add rsi, 0x24
                 add rsi, 0x04
                 ;mov [rsi], eax
@@ -160,15 +182,18 @@ WinMain:
                 add rsi, 0x04
                 ;Raw Size
                 ;mov [rsi], dword 0x0004BBD
-                mov rcx, [rsi]
+                ;mov rcx, [rsi]
 
                 ;Raw Address
                 sub rsi, 0x24
-                ;mov rax, [rsi]
-                ;add rax, 0x400
+                mov rax, [rsi]
+                xor rbx,rbx
+                mov rbx, 0x2000
+                add rax, rbx
                 add rsi, 0x24
                 add rsi, 0x04
                 ;mov [rsi], eax
+                mov r8, [rsi]
 
                 add rsi, 0x04
                 ;mov [rsi], dword 0x00000000
@@ -179,7 +204,7 @@ WinMain:
                 add rsi, 0x02
                 ;mov [rsi], word 0x0000
                 add rsi, 0x04
-                ;mov [rsi], dword 0x40000040
+                mov [rsi], dword 0x40000040
         ret        
          
 
@@ -466,5 +491,46 @@ WinMain:
                 mov rsi, [rax + 0x30];    # 0x30 Offset = ProcessEnvironmentBlock.Ldr.InInitializationOrderModuleList
                 mov rbx, [rsi +0x10];     # dll base ntdll
                 mov r8, rbx;              # Copia o endereco base da ntdll para o registrador R8
-        ret                         
+        ret
+
+        Decrypt:
+                call Locate_kernel32
+                ;Lookup VirtualAlloc
+                mov rax, "lloc"
+                push rax
+                mov rax, "VirtualA"
+                push rax
+                lea rdx, [rsp]
+                mov rcx, r8
+                sub rsp, 0x30
+                call r14
+                mov r12,rax
+                add rsp, 0x30
+        
+                ;call VirtualAlloc
+                mov r9d, 0x04
+                mov r8d, 0x1000
+                mov edx, [TamArqProgram]
+                mov ecx, 0x00
+                sub rsp, 0x30
+                call r12
+                add rsp, 0x30
+                mov rbx,rax
+                add rsp, 0x10
+
+                xor rcx,rcx
+                xor rdx,rdx
+                mov rsi, r13
+                LoopDecrypt:
+                        mov rdx, [rsi]
+                        sub dl, 0x95
+                        sub dl, 0x06
+                        not dl
+                        mov [rax], byte dl
+                        add rsi, 0x01
+                        add rax, 0x01
+                        inc rcx
+                        cmp rcx, [TamArqTarget]
+                        jne LoopDecrypt
+        ret                           
 ret
