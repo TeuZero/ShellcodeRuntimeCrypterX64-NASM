@@ -2,7 +2,13 @@
 
 global WinMain
 
+section .data
+        TamArqProgram times 8 dq 0
+        TamArqTarget times 8 dq 0
+        bufferFileName times 32 db 0
+
 section .text
+
 WinMain:
     Start:
         ;***************
@@ -20,16 +26,162 @@ WinMain:
         call LoadMsvcrt
         call PrintMsgConsole
         call PegaNomeDoaquivo
+
         call OpenFile
         mov rbp,rdi
+        mov r10, rbp ; Arquivo alvo
         ;Nome do proprio programa
         mov rax, "T0.exe"
         add rsp, 0x20
         mov [rsp+0x10], rax
+        xor rax, rax
+        mov rax, [TamArqProgram]
+        mov [TamArqTarget], rax
         call OpenFile
+        call Rsrc
+        call codeModification
+        call CriaArquivoEncriptado 
+        
+        
+        CriaArquivoEncriptado:
+                ;Lookup fopen
+                mov rax, "fopen"
+                push rax
+                lea rdx, [rsp]
+                mov rcx, r15
+                sub rsp, 0x30
+                call r14
+                mov r12,rax
+                add rsp, 0x30
+        
+                ;Abre arquivo
+                mov rax, "e"
+                push rax
+                mov rax, "crypt.ex"
+                push rax
+                lea rcx, [rsp]
+                mov rax, "wb"
+                push rax
+                lea rdx, [rsp]
+                sub rsp, 0x30
+                call r12
+                add rsp, 0x30
+                mov rbx,rax
+                add rsp, 0x10
+                
+                ;Lookup fwrite
+                mov rax, "fwrite"
+                push rax
+                lea rdx, [rsp]
+                mov rcx, r15
+                sub rsp, 0x30
+                call r14
+                mov r12, rax
+                add rsp, 0x30
 
+                ;call fwrite
+                mov edx,[TamArqTarget]
+                add edx, 0x600
+                mov r9, rbx
+                mov r8d, 0x01
+                mov rcx, rdi
+                sub rsp, 0x30
+                call r12
+                add rsp, 0x30
+                add rsp, 0x08
+
+                ;Lookup fclose
+                mov rax, "fclose"
+                push rax
+                lea rdx, [rsp]
+                mov rcx, r15
+                sub rsp, 0x30
+                call r14
+                mov r12, rax
+                add rsp, 0x30
+
+                ;call fclose
+                sub rsp,0x30
+                mov rcx, rbx
+                call r12
+                add rsp, 0x30
+                add rsp, 0x08
         ret
 
+        codeModification:
+                mov rsi, rdi ;Aqruivo T0.exe
+                add rsi, 0x3c
+                mov rdx, [rsi]
+                mov rsi, rdi
+                shl rdx, 0x20
+                shr rdx, 0x20
+                add rsi, rdx ; PE
+                add rsi, 0x50
+                ;xor rbx,rbx
+                ;mov rbx,[rsi]
+                ;add rbx, 0x8BBD
+                ;mov [rsi], ebx ;Altera SizeOfImage
+
+                ;Altera numero das secoes
+                mov rsi, rdi
+                add rsi, rdx
+                add rsi, 0x06
+                mov [rsi], word 0x03
+
+                ; Pega tamnho do codigo .text
+                mov rsi, rdi
+                add rsi, rdx
+                add rsi, 0x1c
+                mov rcx, [rsi]
+        ret
+
+
+        Rsrc:
+                mov rsi, rdi ;Aqruivo T0.exe
+                add rsi, 0x3c
+                mov rdx, [rsi]
+                mov rsi, rdi
+                shl rdx, 0x20
+                shr rdx, 0x20
+                add rsi, rdx ; PE
+                add rsi, 0x158
+                add rsi, 0x08
+                ;mov [rsi], dword 0x0004BBD
+
+                ;Virtual Address
+                sub rsi, 0x24
+                ;xor rax,rax
+                ;mov rax, [rsi]
+                ;add eax, 0x1000
+                add rsi, 0x24
+                add rsi, 0x04
+                ;mov [rsi], eax
+
+                add rsi, 0x04
+                ;Raw Size
+                ;mov [rsi], dword 0x0004BBD
+                mov rcx, [rsi]
+
+                ;Raw Address
+                sub rsi, 0x24
+                ;mov rax, [rsi]
+                ;add rax, 0x400
+                add rsi, 0x24
+                add rsi, 0x04
+                ;mov [rsi], eax
+
+                add rsi, 0x04
+                ;mov [rsi], dword 0x00000000
+                add rsi, 0x04
+                ;mov [rsi], dword 0x00000000
+                add rsi, 0x02
+                ;mov [rsi], word 0x0000
+                add rsi, 0x02
+                ;mov [rsi], word 0x0000
+                add rsi, 0x04
+                ;mov [rsi], dword 0x40000040
+        ret        
+         
 
         IAT:
         ; Código para chegar na tabela de endereco de exportacao
@@ -209,6 +361,7 @@ WinMain:
                 mov rcx, rbx
                 sub rsp, 0x30
                 call r12
+                mov [TamArqProgram], rax
                 add rsp,0x30
                 mov rsi,rax
                 add rsp, 0x08
