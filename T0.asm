@@ -174,7 +174,7 @@ WinMain:
                 mov rsi, rdi
                 add rsi, rdx
                 add rsi, 0x28
-                mov [rsi],dword 0x156A 
+                mov [rsi],dword 0x159E 
         ret
 
 
