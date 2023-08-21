@@ -792,6 +792,13 @@ WinMain:
                         mov r15,rax
                         add rsp, 0x30
                         add rsp, 0x10
+                        
+
+
+                        ;Reloc
+                        ;....
+                        ;....
+                        ;....
 
                         WriteProcess:
                                 ;Lookup WriteProcessMemory
