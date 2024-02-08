@@ -4,16 +4,16 @@
 [BITS 64]
 
 global WinMain
-
+section .bss
+        addressAlocado resq 1
+        addressAlocadoEx resq 1
+        handle resq 1
+        entrypointTarget resq 1
+        TamArqProgram resq 1
+        TamArqTarget resq 1
+        bufferFileName resb 120
 section .data
-        TamArqProgram times 8 dq 0
-        TamArqTarget times 8 dq 0
-        bufferFileName times 32 db 0
         Buffer times 80000 db 0
-        addressAlocado times 8 dq 0
-        addressAlocadoEx times 8 dq 0
-        handle times 8 dq 0
-        entrypointTarget times 8 dq 0
 section .text
 
 WinMain:
