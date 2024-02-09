@@ -6,10 +6,6 @@
 global WinMain
 
 section .bss
-        addressAlocado           resq 1
-        addressAlocadoEx         resq 1
-        handle                   resq 1
-        entrypointTarget         resq 1
         TamArqProgram            resq 1
         TamArqTarget             resq 1
         bufferFileName           resb 120
@@ -111,8 +107,8 @@ ret
 	add rsp, 0x30
 
 	;call fwrite
-	mov rcx, [TamArqProgram]
-	mov edx, rcx
+	mov rcx,[rel TamArqProgram]
+	mov edx, [rcx]
 	mov r9, rbx
 	mov r8d, 0x01
 	mov rcx, rdi
@@ -415,7 +411,7 @@ GetSizeFile:
 	mov rcx, rbx
 	sub rsp, 0x30
 	call r12
-	mov [TamArqProgram], rax
+	mov [rel TamArqProgram], rax
 	add rsp,0x30
 	mov rsi,rax
 	add rsp, 0x08
