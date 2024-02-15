@@ -860,53 +860,53 @@ Exit:
 ret
 
 GetProcAddres:
-		xor r11,r11
-		xor r13,r13
-		xor rcx, rcx; # Zera RCX
-		mov rax, gs:[rcx + 0x60]
-		mov rax, [rax + 0x18]
-		mov rsi, [rax + 0x20]
-		lodsq
-		xchg rax, rsi
-		lodsq
-		mov rbx, [rax + 0x20] 
-		mov r8, rbx
-		  
-		; Código para chegar na tabela de endereco de exportacao
-		mov ebx, [rbx+0x3C]
-		add rbx, r8
-		mov r12, 0x88FFFFF      
-		shr r12, 0x14 
-		mov edx, [rbx+r12]
-		add rdx, r8
-		mov r10d, [rdx+0x14]
-		xor r11, r11
-		mov r11d, [rdx+0x20]
-		add r11, r8
+	xor r11,r11
+	xor r13,r13
+	xor rcx, rcx; # Zera RCX
+	mov rax, gs:[rcx + 0x60]
+	mov rax, [rax + 0x18]
+	mov rsi, [rax + 0x20]
+	lodsq
+	xchg rax, rsi
+	lodsq
+	mov rbx, [rax + 0x20] 
+	mov r8, rbx
+	  
+	; Código para chegar na tabela de endereco de exportacao
+	mov ebx, [rbx+0x3C]
+	add rbx, r8
+	mov r12, 0x88FFFFF      
+	shr r12, 0x14 
+	mov edx, [rbx+r12]
+	add rdx, r8
+	mov r10d, [rdx+0x14]
+	xor r11, r11
+	mov r11d, [rdx+0x20]
+	add r11, r8
 
-		FinFunctionGetProcAddress2:
-				mov rcx, r10
-				kernel32findfunction2:  
-						jecxz FunctionNameFound2
-						xor ebx,ebx
-						mov ebx, [r11+4+rcx*4]
-						add rbx, r8
-						dec rcx
-						mov rax, 0x41636f7250746547
-						cmp [rbx], rax;
-						jnz kernel32findfunction2;  
-
-				; Encontra o endereço da função de GetProcessAddress
-				FunctionNameFound2:                 
-					xor r11, r11; 
-					mov r11d, [rdx+0x24]
-					add r11, r8
-					inc rcx; 
-					mov r13w, [r11+rcx*2]
-					xor r11, r11; 
-					mov r11d, [rdx+0x1c]
-					add r11, r8
-					mov eax, [r11+4+r13*4]
-					add rax, r8
-					mov r14, rax
+	FinFunctionGetProcAddress2:
+		mov rcx, r10
+		kernel32findfunction2:  
+			jecxz FunctionNameFound2
+			xor ebx,ebx
+			mov ebx, [r11+4+rcx*4]
+			add rbx, r8
+			dec rcx
+			mov rax, 0x41636f7250746547
+			cmp [rbx], rax;
+			jnz kernel32findfunction2;  
+	
+		; Encontra o endereço da função de GetProcessAddress
+		FunctionNameFound2:                 
+			xor r11, r11; 
+			mov r11d, [rdx+0x24]
+			add r11, r8
+			inc rcx; 
+			mov r13w, [r11+rcx*2]
+			xor r11, r11; 
+			mov r11d, [rdx+0x1c]
+			add r11, r8
+			mov eax, [r11+4+r13*4]
+			add rax, r8
+			mov r14, rax
 ret
