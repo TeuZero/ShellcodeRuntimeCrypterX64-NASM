@@ -234,62 +234,61 @@ ret
 
 IAT:
 	; Código para chegar na tabela de endereco de exportacao
-	mov ebx, [rbx+0x3C];# obtem o endereco da assinatura do  PE do Kernel32 e coloca em  EBX
-	add rbx, r8;# Add defrerenced signature offset to kernel32 base. Store in RBX.
+	mov ebx, [rbx+0x3C]
+	add rbx, r8
 	mov r12, 0x88FFFFF;      
 	shr r12, 0x14; 
-	mov edx, [rbx+r12];   # Offset from PE32 Signature to Export Address Table (NULL BYTE)
-	add rdx, r8;# RDX = kernel32.dll + RVA ExportTable = ExportTable Address
-	mov r10d, [rdx+0x14]; # numero de funcoes
-	xor r11, r11;# Zera R11 para ser usado 
-	mov r11d, [rdx+0x20]; # AddressOfNames RVA
-	add r11, r8;# AddressOfNames VMA
+	mov edx, [rbx+r12]
+	add rdx, r8
+	mov r10d, [rdx+0x14]
+	xor r11, r11
+	mov r11d, [rdx+0x20]
+	add r11, r8
 ret
 
 ; Percorra a tabela de endereços de exportação para encontrar o nome GetProcAddress
 FinFunctionGetProcAddress:
-	mov rcx, r10; # Set loop counter
+	mov rcx, r10
 kernel32findfunction:  
-	jecxz FunctionNameFound; # Percorra esta função até encontrarmos GetProcA
-	xor ebx,ebx; # Zera EBX para ser usada
-	mov ebx, [r11+4+rcx*4]; # EBX = RVA para o primeiro AddressOfName
-	add rbx, r8; # RBX = Nome da funcao VMA
-	dec rcx; # Decrementa o loop em 1
-	mov rax, 0x41636f7250746547; # GetProcA
-	cmp [rbx], rax; # checa se rbx é igual a  GetProcA
+	jecxz FunctionNameFound
+	xor ebx,ebx
+	mov ebx, [r11+4+rcx*4]
+	add rbx, r8
+	dec rcx
+	mov rax, 0x41636f7250746547
+	cmp [rbx], rax
 	jnz kernel32findfunction;  
 
 	; Encontra o endereço da função de GetProcessAddress
 	FunctionNameFound:                 
-		; We found our target
 		xor r11, r11; 
-		mov r11d, [rdx+0x24];   # AddressOfNameOrdinals RVA
-		add r11, r8; # AddressOfNameOrdinals VMA
-		; Get the function ordinal from AddressOfNameOrdinals
+		mov r11d, [rdx+0x24]
+		add r11, r8
+		
 		inc rcx; 
-		mov r13w, [r11+rcx*2]; # AddressOfNameOrdinals + Counter. RCX = counter
-		; Get function address from AddressOfFunctions
+		mov r13w, [r11+rcx*2]
+		
 		xor r11, r11; 
-		mov r11d, [rdx+0x1c]; # AddressOfFunctions RVA
-		add r11, r8; # AddressOfFunctions VMA in R11. Kernel32+RVA for addressoffunctions
-		mov eax, [r11+4+r13*4]; # Get the function RVA.
-		add rax, r8; # Add base address to function RVA
-		mov r14, rax; # GetProcAddress to R14
+		mov r11d, [rdx+0x1c]
+		add r11, r8
+		mov eax, [r11+4+r13*4]
+		add rax, r8
+		mov r14, rax
 ret
 
 LoadLibraryA:
    ; pega o endereco LoadLibraryA usando GetProcAddress
-	mov rcx, 0x41797261;  
+	mov rcx, 0x41797261  
+	push rcx  
+	mov rcx, 0x7262694c64616f4c  
 	push rcx;  
-	mov rcx, 0x7262694c64616f4c;  
-	push rcx;  
-	mov rdx, rsp; # joga o ponteiro da string LoadLibraryA para RDX
-	mov rcx, r8; # Copia o endereço base da Kernel32  para RCX
-	sub rsp, 0x30; # Make some room on the stack
-	call r14; # Call GetProcessAddress
-	add rsp, 0x30; # Remove espaço locdo na pilha
-	add rsp, 0x10; # Remove a string alocada de  LoadLibrary 
-	mov rsi, rax; # Guarda o endereço de loadlibrary em RSI
+	mov rdx, rsp
+	mov rcx, r8; 
+	sub rsp, 0x30
+	call r14
+	add rsp, 0x30 
+	add rsp, 0x10
+	mov rsi, rax 
 ret
 
 LoadMsvcrt:
